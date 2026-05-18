@@ -1,0 +1,101 @@
+Timestamp,Type of cybersecurity assessment,Client identifier,Project delivery mode,Client industry,Approximate client organisation size,Years of Assessment/Project,Total number of consultants on the project,Number of systems and/or applications in scope,Approximate Number of meetings held with the client during the project,Client responsiveness level,Security maturity of client at project start,Total duration of the project (days),Did the project experience delays?,Overall compliance score (%),Total number of vulnerabilities identified,Number of critical/high vulnerabilities
+5/10/26 11:53,PCI DSS,CLIENT 001,Fully Remote,Banking / Financial Services,Large (500–2000),2024,3,0 to 50,10,3,4,90,Yes,70,50 to 100,4
+5/10/26 11:56,PCI DSS,CLIENT 002,Fully Remote,Banking / Financial Services,Large (500–2000),2025,3,0 to 50,15,3,3,150,Yes,80,0 to 50,5
+5/10/26 12:08,PCI DSS,CLIENT 003,Hybrid,Banking / Financial Services,Enterprise (2000+),2025,2,100 to 150,10,2,4,210,Yes,80%,50 to 100,3
+5/10/26 12:25,ISO 27001,CLIENT 004,Hybrid,Banking / Financial Services,Large (500–2000),2023,2,50 to 100,Between 50 - 100,3,3,100 working days,Yes,85,0 to 50,Less than 20
+5/10/26 12:32,PCI DSS,CLIENT 005,Fully Remote,Banking / Financial Services,Small (<100 employees,2025,2,0 to 50,15,3,2,140,Yes,95,0 to 50,2
+5/10/26 12:33,PCI DSS,CLIENT 006,Fully Remote,Fintech,Small (<100 employees,2025,2,0 to 50,20,4,3,130,Yes,90,0 to 50,3
+5/10/26 14:13,VAPT,CLIENT 007,Hybrid,Other,Small (<100 employees,2026,2,> 200,3,3,2,45,Yes,40,50 to 100,14
+5/10/26 14:15,PCI DSS,CLIENT 008,Fully Remote,Banking / Financial Services,Small (<100 employees,2025,2,0 to 50,About 6,4,3,120 days,Yes,95%,0 to 50,11 critical and 3 High
+5/10/26 14:26,PCI DSS,CLIENT 009,Hybrid,Banking / Financial Services,Large (500–2000),2024,2,0 to 50,15,3,2,55,Yes,88,50 to 100,30
+5/10/26 14:28,PCI DSS,CLIENT 010,Fully Remote,Fintech,Small (<100 employees,2025,2,0 to 50,10,2,3,65,Yes,75,0 to 50,5
+5/10/26 14:28,PCI DSS,CLIENT 011,Hybrid,Banking / Financial Services,Large (500–2000),2025,2,50 to 100,10,3,2,90,Yes,89,50 to 100,10
+5/10/26 15:05,PCI DSS,CLIENT 012,Hybrid,Banking / Financial Services,Enterprise (2000+),2024,2,50 to 100,15,3,3,120,Yes,92,50 to 100,20
+5/10/26 16:30,SWIFT,CLIENT 013,Fully Remote,Banking / Financial Services,Small (<100 employees,2025,2,0 to 50,10,4,3,15 days,No,70,0 to 50,5
+5/10/26 18:25,SWIFT,CLIENT 014,Fully Remote,Banking / Financial Services,Small (<100 employees,2025,2,0 to 50,10,3,3,14,No,75,0 to 50,4
+5/10/26 18:27,IMS,CLIENT 015,Hybrid,Banking / Financial Services,Enterprise (2000+),2025,more than 4,0 to 50,More than 40,3,3,150,Yes,70%,0 to 50,1
+5/10/26 18:28,PCI DSS,CLIENT 016,Fully Remote,Banking / Financial Services,Medium (100–500),2025,2,50 to 100,5,5,4,90 days,No,97%,0 to 50,65 - 70
+5/10/26 18:30,PCI DSS,CLIENT 017,Hybrid,Banking / Financial Services,Enterprise (2000+),2024,2,50 to 100,20,4,3,90 days,No,100,50 to 100,15
+5/10/26 18:37,PCI DSS,CLIENT 018,Hybrid,Banking / Financial Services,Enterprise (2000+),2025,2,50 to 100,20,3,3,90,No,100,50 to 100,15
+5/10/26 18:39,PCI DSS,CLIENT 019,Hybrid,Fintech,Medium (100–500),2025,2,0 to 50,3,5,5,3 months,No,100%,0 to 50,Nil
+5/10/26 18:42,VAPT,CLIENT 020,Hybrid,Banking / Financial Services,Medium (100–500),2026,2,150 to 200,50,4,1,365,Yes,85%,>150,80
+5/10/26 18:43,PCI DSS,CLIENT 021,Hybrid,Banking / Financial Services,Enterprise (2000+),2025,2,50 to 100,10,3,3,120,Yes,90,50 to 100,20
+5/10/26 18:44,VAPT,CLIENT 022,Hybrid,Other,Small (<100 employees,2026,2,> 200,2,3,3,40 days,Yes,60,50 to 100,25
+5/10/26 18:45,VAPT,CLIENT 023,Fully Remote,Banking / Financial Services,Medium (100–500),2025,2,50 to 100,3,4,4,21,Yes,60,0 to 50,41
+5/10/26 18:47,PCI DSS,CLIENT 024,Hybrid,Other,Small (<100 employees,2026,more than 4,0 to 50,5 meeting sessions,5,3,3 months,No,56%,50 to 100,52 vulnerabilities
+5/10/26 18:50,PCI DSS,CLIENT 025,Hybrid,Other,Small (<100 employees,2025,more than 4,0 to 50,5 sessions,5,3,90 days,Yes,64%,50 to 100,30 vulnerabilities
+5/10/26 18:58,VAPT,CLIENT 026,Hybrid,Other,Small (<100 employees,2025,2,> 200,3,3,2,45,Yes,50,50 to 100,25
+5/10/26 19:03,VAPT,CLIENT 027,Hybrid,Other,Small (<100 employees,2025,2,> 200,3,3,3,45,Yes,50,50 to 100,25
+5/10/26 19:06,PCI DSS,CLIENT 028,Hybrid,Telecommunications,Enterprise (2000+),2025,2,0 to 50,25,2,2,90 days,Yes,100,0 to 50,5
+5/10/26 19:24,ISO 27001,CLIENT 029,Hybrid,Telecommunications,Enterprise (2000+),2025,3,> 200,50+,3,4,90,Yes,90%,0 to 50,2
+5/10/26 19:26,VAPT,CLIENT 030,Hybrid,Banking / Financial Services,Large (500–2000),2026,2,50 to 100,4,4,4,16 working days,No,75%,0 to 50,10
+5/10/26 19:26,ISO 27001,CLIENT 031,Hybrid,Fintech,Small (<100 employees,2024,2,0 to 50,<50,3,3,120,Yes,75%,0 to 50,4
+5/10/26 19:56,PCI DSS,CLIENT 032,Hybrid,Banking / Financial Services,Large (500–2000),2025,2,0 to 50,15,4,2,120,Yes,90%,0 to 50,Less than 10
+5/10/26 19:59,PCI DSS,CLIENT 033,Fully Remote,Fintech,Small (<100 employees,2026,2,0 to 50,10,4,3,40,No,95%,0 to 50,3 and now remediated
+5/10/26 20:55,VAPT,CLIENT 034,Hybrid,Banking / Financial Services,Enterprise (2000+),2025,2,> 200,5,3,5,20,Yes,70,>150,50
+5/10/26 20:56,IMS,CLIENT 035,Hybrid,Other,Medium (100–500),2025,3,50 to 100,Less than 100,3,2,365,Yes,70,50 to 100,Less than 30
+5/10/26 21:06,ISO 27001,CLIENT 036,Hybrid,Fintech,Small (<100 employees,2026,2,0 to 50,100,2,1,120 days,Yes,70,0 to 50,35
+5/10/26 21:07,VAPT,CLIENT 037,Hybrid,Other,Small (<100 employees,2026,2,0 to 50,5,3,3,40 days,Yes,60,>150,30 critical 55 high
+5/10/26 21:08,IMS,CLIENT 038,Hybrid,Other,Small (<100 employees,2026,2,0 to 50,11,4,5,60,Yes,90,0 to 50,5
+5/10/26 21:38,VAPT,CLIENT 039,Hybrid,Banking / Financial Services,Medium (100–500),2025,2,50 to 100,6,4,4,21,No,83,0 to 50,12
+5/10/26 21:40,VAPT,CLIENT 040,Hybrid,Fintech,Medium (100–500),2025,2,50 to 100,7,4,4,21,No,89,50 to 100,23
+5/10/26 21:51,VAPT,CLIENT 041,Hybrid,Banking / Financial Services,Medium (100–500),2026,3,150 to 200,20,4,2,20,Yes,30,50 to 100,50
+5/10/26 21:55,VAPT,CLIENT 042,Fully Remote,Banking / Financial Services,Medium (100–500),2026,2,150 to 200,10,4,3,30,Yes,30,50 to 100,10
+5/10/26 22:19,PCI DSS,CLIENT 043,Hybrid,Other,Small (<100 employees,2026,3,0 to 50,10,4,4,120,Yes,90,0 to 50,10
+5/10/26 22:20,PCI DSS,CLIENT 044,Hybrid,Other,Small (<100 employees,2025,3,0 to 50,10,3,4,120 days,Yes,90,0 to 50,15
+5/10/26 22:51,VAPT,CLIENT 045,Fully Remote,Banking / Financial Services,Small (<100 employees,2026,2,0 to 50,3,3,3,7,Yes,50,0 to 50,17
+5/10/26 22:57,VAPT,CLIENT 046,Hybrid,Banking / Financial Services,Enterprise (2000+),2,3,> 200,6,5,5,30,No,85,>150,>50
+5/10/26 23:58,VAPT,CLIENT 047,Hybrid,Other,Small (<100 employees,2025,2,0 to 50,30,4,5,30,No,80,50 to 100,33
+5/10/26 23:59,IMS,CLIENT 048,Hybrid,Other,Small (<100 employees,2026,3,0 to 50,100,5,3,130 days,Yes,96,0 to 50,None
+5/11/26 1:03,FORENSICS,CLIENT 049,Hybrid,Banking / Financial Services,Enterprise (2000+),2026,3,0 to 50,6,5,3,2 months,Yes,60,50 to 100,20
+5/11/26 3:12,ISO 27001,CLIENT 050,Hybrid,Banking / Financial Services,Enterprise (2000+),2024,2,0 to 50,30,5,4,182 (6 months),Yes,95%,0 to 50,1
+5/11/26 5:13,VAPT,CLIENT 051,Hybrid,Banking / Financial Services,Enterprise (2000+),2025,2,100 to 150,5,3,3,20,Yes,…,50 to 100,35+
+5/11/26 6:09,VAPT,CLIENT 052,Hybrid,Banking / Financial Services,Medium (100–500),206,2,0 to 50,10,3,2,14,Yes,60,100 to 150,30
+5/11/26 8:09,IMS,CLIENT 053,Hybrid,Fintech,Large (500–2000),2025,more than 4,50 to 100,60,3,3,180 days,Yes,88,0 to 50,5
+5/11/26 9:33,ISO 27001,CLIENT 054,Hybrid,Other,Small (<100 employees,2025,3,0 to 50,60,4,3,200 days,Yes,85,0 to 50,5
+5/11/26 9:35,ISO 27001,CLIENT 055,Hybrid,Other,Medium (100–500),2025,2,0 to 50,70,4,4,250,Yes,85,0 to 50,2
+5/11/26 9:39,PCI DSS,CLIENT 056,Hybrid,Banking / Financial Services,Large (500–2000),2025,more than 4,50 to 100,15 sessions,5,2,108 days,Yes,50%,100 to 150,82 vulnerabilities
+5/11/26 9:48,PCI DSS,CLIENT 057,Hybrid,E-commerce,Large (500–2000),2024,3,50 to 100,10 sessions,5,3,96 days,Yes,90%,50 to 100,80 vulnerabilities
+5/11/26 15:49,ISO 27001,CLIENT 058,Hybrid,Banking / Financial Services,Large (500–2000),2026,2,0 to 50,40,3,3,3 months,No,80%,0 to 50,None
+5/11/26 15:51,IMS,CLIENT 059,Hybrid,Other,Small (<100 employees,2025,2,0 to 50,30,3,3,3 months,No,85%,0 to 50,None
+5/11/26 19:15,PCI DSS,CLIENT 060,Fully Remote,Fintech,Medium (100–500),2026,2,0 to 50,0,3,3,112,Yes,100%,0 to 50,Nil
+5/11/26 19:15,VAPT,CLIENT 061,Hybrid,Banking / Financial Services,Medium (100–500),2025,2,100 to 150,5,3,3,30,Yes,80,50 to 100,25
+5/11/26 19:18,VAPT,CLIENT 062,Fully Onsite,Banking / Financial Services,Small (<100 employees,2024,2,0 to 50,Two,4,3,5 days,No,75,0 to 50,13
+5/11/26 19:20,VAPT,CLIENT 063,Fully Onsite,Banking / Financial Services,Small (<100 employees,2024,2,0 to 50,One,4,3,5 days,No,85%,50 to 100,21
+5/11/26 19:27,PCI DSS,CLIENT 064,Hybrid,Fintech,Enterprise (2000+),2025,2,0 to 50,25,2,2,90 days,Yes,80,0 to 50,3
+5/11/26 19:29,VAPT,CLIENT 065,Hybrid,Banking / Financial Services,Enterprise (2000+),2026,2,> 200,10,3,3,40 days,Yes,60,>150,30
+5/11/26 19:31,VAPT,CLIENT 066,Fully Onsite,Banking / Financial Services,Medium (100–500),2026,1,150 to 200,5,2,2,14,Yes,60,0 to 50,15
+5/11/26 19:38,ISO 27001,CLIENT 067,Hybrid,Other,Medium (100–500),2025,2,0 to 50,25,4,4,95,No,92%,0 to 50,2
+5/11/26 19:44,ISO 27001,CLIENT 068,Hybrid,Other,Small (<100 employees,2025,more than 4,0 to 50,40,3,3,75,No,85%,0 to 50,0
+5/11/26 19:48,IMS,CLIENT 069,Hybrid,Fintech,Small (<100 employees,2025,2,0 to 50,60,3,2,250,Yes,60%,0 to 50,3
+5/11/26 19:58,VAPT,CLIENT 070,Fully Remote,Banking / Financial Services,Medium (100–500),Less than a year,2,0 to 50,3,4,4,8 days,No,60,0 to 50,2
+5/11/26 20:00,PCI DSS,CLIENT 071,Fully Remote,Banking / Financial Services,Small (<100 employees,2026,3,0 to 50,9,3,1,90,Yes,60,0 to 50,5
+5/11/26 20:07,VAPT,CLIENT 072,Fully Remote,Banking / Financial Services,Small (<100 employees,2026,2,0 to 50,3,3,3,7,Yes,50,0 to 50,19
+5/11/26 20:07,PCI DSS,CLIENT 073,Hybrid,Banking / Financial Services,Enterprise (2000+),1,3,50 to 100,10,4,3,6,No,60,50 to 100,20
+5/11/26 20:18,PCI DSS,CLIENT 074,Fully Remote,Fintech,Medium (100–500),2025,2,100 to 150,25,4,4,67,Yes,90,50 to 100,20
+5/11/26 20:22,PCI DSS,CLIENT 075,Hybrid,Banking / Financial Services,Enterprise (2000+),1,3,0 to 50,15,4,3,90,No,60,50 to 100,20
+5/11/26 20:24,PCI DSS,CLIENT 076,Hybrid,Banking / Financial Services,Large (500–2000),1,2,0 to 50,12,2,3,90,No,50,50 to 100,35
+5/11/26 20:37,FORENSICS,CLIENT 077,Hybrid,Banking / Financial Services,Large (500–2000),1,3,150 to 200,15,4,2,90,No,85,>150,90
+5/11/26 20:38,VAPT,CLIENT 078,Fully Remote,Banking / Financial Services,Small (<100 employees,2026,2,0 to 50,3,3,3,7,Yes,50,0 to 50,1
+5/11/26 20:41,VAPT,CLIENT 079,Hybrid,Banking / Financial Services,Enterprise (2000+),5,more than 4,> 200,100+,4,1,1825,Yes,70,>150,500
+5/11/26 20:46,FORENSICS,CLIENT 080,Hybrid,Banking / Financial Services,Medium (100–500),1,3,150 to 200,35,3,2,180,Yes,80,>150,65
+5/11/26 20:53,VAPT,CLIENT 081,Fully Remote,Banking / Financial Services,Small (<100 employees,2026,2,0 to 50,2,2,2,7,No,30,0 to 50,9
+5/11/26 20:57,VAPT,CLIENT 082,Hybrid,Banking / Financial Services,Enterprise (2000+),2026,1,0 to 50,4,4,4,30 days,No,70%,50 to 100,20
+5/11/26 21:16,VAPT,CLIENT 083,Hybrid,Banking / Financial Services,Enterprise (2000+),4,2,50 to 100,15,4,4,14,Yes,90,50 to 100,20
+5/11/26 21:16,VAPT,CLIENT 084,Hybrid,Banking / Financial Services,Medium (100–500),2 years,2,50 to 100,4,3,4,16 days,Yes,60%,0 to 50,10
+5/11/26 21:18,VAPT,CLIENT 085,Hybrid,Banking / Financial Services,Enterprise (2000+),3,2,50 to 100,20,3,3,14,Yes,80,50 to 100,30
+5/11/26 21:19,VAPT,CLIENT 086,Fully Remote,Banking / Financial Services,Enterprise (2000+),2026,1,0 to 50,3,2,4,3 days,Yes,70%,0 to 50,2
+5/11/26 21:20,VAPT,CLIENT 087,Hybrid,Banking / Financial Services,Large (500–2000),4,2,0 to 50,10,4,4,14,Yes,80,0 to 50,15
+5/11/26 21:21,PCI DSS,CLIENT 088,Fully Remote,Fintech,Small (<100 employees,2025,2,0 to 50,15,3,3,155,Yes,85,100 to 150,50
+5/11/26 21:23,VAPT,CLIENT 089,Hybrid,Banking / Financial Services,Medium (100–500),2026,2,0 to 50,5,4,3,14,Yes,80,0 to 50,10
+5/11/26 21:38,VAPT,CLIENT 090,Hybrid,Other,Medium (100–500),2025,2,50 to 100,4,4,2,15 days,Yes,85%,50 to 100,15-20
+5/11/26 22:19,VAPT,CLIENT 091,Fully Remote,Banking / Financial Services,Enterprise (2000+),2026,1,0 to 50,1,2,4,3,Yes,75%,0 to 50,3
+5/12/26 6:46,ISO 27001,CLIENT 092,Hybrid,Banking / Financial Services,Medium (100–500),2023,2,0 to 50,50,4,2,100,Yes,90,0 to 50,5
+5/12/26 6:47,IMS,CLIENT 093,Hybrid,Banking / Financial Services,Large (500–2000),2024,2,0 to 50,55,4,3,120,No,95,0 to 50,8
+5/12/26 6:50,IMS,CLIENT 094,Hybrid,Other,Small (<100 employees,2025,3,0 to 50,30,4,3,120,Yes,95,0 to 50,3
+5/12/26 9:27,VAPT,CLIENT 095,Hybrid,Fintech,Large (500–2000),2025,2,150 to 200,200,4,3,1460,No,85,100 to 150,45
+5/12/26 6:46,ISO 27001,CLIENT 096,Hybrid,Banking / Financial Services,Medium (100–500),2024,2,0 to 50,50,4,2,100,Yes,90,0 to 50,5
+5/12/26 6:46,ISO 27001,CLIENT 097,Hybrid,Banking / Financial Services,Medium (100–500),2025,2,0 to 50,50,4,2,100,Yes,90,0 to 50,5
+5/11/26 21:23,VAPT,CLIENT 098,Hybrid,Banking / Financial Services,Medium (100–500),2025,2,0 to 50,5,4,3,14,Yes,80,0 to 50,10
+5/11/26 19:15,PCI DSS,CLIENT 099,Fully Remote,Fintech,Medium (100–500),2025,2,0 to 50,0,3,3,112,Yes,100%,0 to 50,Nil
+5/11/26 3:12,ISO 27001,CLIENT 100,Hybrid,Banking / Financial Services,Enterprise (2000+),2025,2,0 to 50,30,5,4,182 (6 months),Yes,95%,0 to 50,1
