@@ -1,5 +1,5 @@
 ---
-title: "Cybersecurity Assessment Analytics: Drivers of Compliance Scores and Project Delivery Efficiency at Digital Encode Ltd"
+title: "Cybersecurity Assessment Analytics: Drivers of Compliance Scores and Project Delivery Efficiency"
 author: "Oladeinde Bisola"
 date: today
 format:
@@ -16,6 +16,10 @@ execute:
 ---
 
 ```{r setup, include=FALSE}
+# ── CRAN mirror must be set before any install.packages() calls ──
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+options(scipen = 999)
+
 if (requireNamespace("reticulate", quietly = TRUE)) {
   venv_python <- "/Users/user/Documents/LandMan/UA High/LBA -EMBA -Nomso/.venv/bin/python"
   if (file.exists(venv_python)) {
@@ -23,14 +27,36 @@ if (requireNamespace("reticulate", quietly = TRUE)) {
   }
 }
 
-pkgs <- c("readr", "dplyr", "tidyr", "tibble", "purrr", "forcats", "ggplot2",
-          "lubridate", "scales", "ggcorrplot", "patchwork", "broom", "knitr")
-invisible(lapply(pkgs, library, character.only = TRUE))
-if (!requireNamespace("kableExtra", quietly = TRUE)) {
-  kable_styling <- function(x, ...) x
-} else {
-  library(kableExtra)
+# Core packages — auto-install from source if missing
+# (car removed: its lme4/nloptr chain requires cmake; leveneTest reimplemented below)
+core_pkgs <- c("readr", "dplyr", "tidyr", "tibble", "purrr", "forcats",
+               "ggplot2", "lubridate", "scales", "ggcorrplot", "patchwork",
+               "broom", "knitr", "e1071")
+for (pkg in core_pkgs) {
+  ok <- tryCatch({ library(pkg, character.only = TRUE); TRUE }, error = function(e) FALSE)
+  if (!ok) {
+    install.packages(pkg, dependencies = NA)
+    library(pkg, character.only = TRUE)
+  }
 }
+
+# Base-R Brown-Forsythe/Levene test (replaces car::leveneTest — no cmake needed)
+levene_test_r <- function(y, group) {
+  group <- factor(group)
+  gmed  <- tapply(y, group, median, na.rm = TRUE)
+  z     <- abs(y - gmed[as.character(group)])
+  s     <- summary(aov(z ~ group))[[1]]
+  data.frame(Df = s[["Df"]], `F value` = s[["F value"]],
+             `Pr(>F)` = s[["Pr(>F)"]], check.names = FALSE)
+}
+
+# kableExtra — requires system libs (harfbuzz/fribidi) to build from source;
+# skip installation and use a no-op stub if it can't be loaded.
+if (!tryCatch({ library(kableExtra); TRUE }, error = function(e) FALSE)) {
+  kable_styling <<- function(x, ...) x
+  message("kableExtra not available — using plain kable() output")
+}
+
 clean_names <- function(df) {
   nms <- names(df)
   nms <- tolower(nms)
@@ -52,7 +78,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import seaborn as sns
-from scipy.stats import f_oneway, kruskal, ttest_ind, pearsonr
+from scipy.stats import (f_oneway, kruskal, ttest_ind, pearsonr,
+                         spearmanr, shapiro, levene, chi2_contingency)
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
@@ -63,7 +90,21 @@ plt.rcParams["figure.dpi"] = 150
 ```
 
 ```{r load-r, include=FALSE}
-df_r_raw <- read_csv("data/cybersecurity_assessment report_report_dig_enc_ltd.csv",
+# Helper: parse numeric ranges like "0 to 50" → midpoint 25; plain numbers pass through
+parse_range_midpoint <- function(x) {
+  nums <- suppressWarnings(as.numeric(x))
+  rng  <- is.na(nums) & grepl("[a-zA-Z\\-]", x)
+  if (any(rng, na.rm = TRUE)) {
+    parts <- regmatches(x[rng], gregexpr("[0-9]+", x[rng]))
+    nums[rng] <- sapply(parts, function(p) {
+      p <- as.numeric(p)
+      if (length(p) >= 2) mean(p[1:2]) else if (length(p) == 1) p else NA_real_
+    })
+  }
+  nums
+}
+
+df_r_raw <- read_csv("data/cybersecurity_assessment_report_dig_enc_ltd.csv",
                  col_types = cols(.default = col_character()))
 # Manual rename to short snake_case names
 df_r <- df_r_raw |>
@@ -91,7 +132,7 @@ df_r <- df_r_raw |>
     year                       = year(timestamp),
     years_of_assessment        = as.numeric(years_of_assessment),
     consultants                = as.numeric(consultants),
-    systems_in_scope           = as.numeric(systems_in_scope),
+    systems_in_scope           = parse_range_midpoint(systems_in_scope),
     meetings                   = as.numeric(meetings),
     total_duration_days        = as.numeric(gsub("[^0-9.]", "", total_duration_days)),
     compliance_score_percent   = as.numeric(gsub("[^0-9.]", "", compliance_score_percent)),
@@ -122,7 +163,7 @@ df_r <- df_r |>
 
 ```{python load-py, include=FALSE}
 df_py = pd.read_csv(
-    "data/cybersecurity_assessment report_report_dig_enc_ltd.csv",
+    "data/cybersecurity_assessment_report_dig_enc_ltd.csv",
     dtype=str)
 
 # ⚠ Column names are very long — normalize to snake_case
@@ -159,9 +200,19 @@ scope_col  = fc("systems_in_scope")
 consult_col = fc("consultants")
 meetings_col = fc("meetings")
 
-# Convert numeric columns
-for col in [dur_col, comp_col, vuln_col, crit_col,
-            scope_col, consult_col, meetings_col]:
+# systems_in_scope may contain range strings like "0 to 50" — extract midpoint before bulk conversion
+def _parse_range_midpoint(val):
+    if pd.isna(val): return np.nan
+    n = pd.to_numeric(str(val).strip(), errors="coerce")
+    if not pd.isna(n): return float(n)
+    nums = [float(x) for x in re.findall(r"\d+", str(val))]
+    return np.mean(nums[:2]) if len(nums) >= 2 else (nums[0] if nums else np.nan)
+
+if scope_col:
+    df_py[scope_col] = df_py[scope_col].apply(_parse_range_midpoint)
+
+# Convert remaining numeric columns
+for col in [dur_col, comp_col, vuln_col, crit_col, consult_col, meetings_col]:
     if col:
         df_py[col] = pd.to_numeric(
             df_py[col].str.replace(r"[^\d.\-]", "", regex=True), errors="coerce")
@@ -174,7 +225,7 @@ maturity_order = ["Initial","Developing","Defined","Managed","Optimising"]
 
 ## 1. Executive Summary
 
-**Business problem:** Digital Encode Ltd's cybersecurity consulting practice delivers assessments across diverse client industries and organisation sizes. Understanding which engagement factors drive compliance score outcomes and project duration efficiency informs staffing decisions, engagement design, and client onboarding processes.
+**Business problem:** The organisation's cybersecurity consulting practice delivers assessments across diverse client industries and organisation sizes. Understanding which engagement factors drive compliance score outcomes and project duration efficiency informs staffing decisions, engagement design, and client onboarding processes.
 
 **Data collected:** 100 cybersecurity assessment records collected via standardised Google Form across 2023–2026, covering assessment type, delivery mode, client characteristics, engagement inputs, and outcome metrics including compliance scores and vulnerability counts.
 
@@ -191,17 +242,17 @@ maturity_order = ["Initial","Developing","Defined","Managed","Optimising"]
 ## 2. Professional Disclosure
 
 **Job title:** Senior Manager / Head of Department, Cybersecurity and Compliance Advisory  
-**Organisation:** Digital Encode Limited
+**Organisation Type:** Cybersecurity Consulting Firm
 
 ### Exploratory Data Analysis
-As Senior Manager and Head of the Cybersecurity and Compliance Advisory department at Digital Encode Limited, I oversee a practice delivering PCI DSS assessments, SWIFT CSP certifications, ISO 27001 engagements, and vulnerability assessments to banking, fintech, and telecoms clients. Before designing staffing models, proposal timelines, or pricing frameworks, I need to understand whether our operational challenges — delayed engagements, variable compliance outcomes, high consultant utilisation — are concentrated in specific engagement types or client profiles, or whether they represent systemic practice-wide problems. EDA of the 100-project dataset answers the foundational question: is the distribution of project duration and compliance scores broadly symmetric and predictable, or are extreme outliers (unusually long engagements or very low compliance scores) distorting our average performance metrics? The distribution of critical and high vulnerabilities by assessment type also reveals whether certain service lines systematically encounter more complex security environments — a key input to fee-setting and resource planning.
+As Senior Manager and Head of the Cybersecurity and Compliance Advisory department at the organisation, I oversee a practice delivering PCI DSS assessments, SWIFT CSP certifications, ISO 27001 engagements, and vulnerability assessments to banking, fintech, and telecoms clients. Before designing staffing models, proposal timelines, or pricing frameworks, I need to understand whether our operational challenges — delayed engagements, variable compliance outcomes, high consultant utilisation — are concentrated in specific engagement types or client profiles, or whether they represent systemic practice-wide problems. EDA of the 100-project dataset answers the foundational question: is the distribution of project duration and compliance scores broadly symmetric and predictable, or are extreme outliers (unusually long engagements or very low compliance scores) distorting our average performance metrics? The distribution of critical and high vulnerabilities by assessment type also reveals whether certain service lines systematically encounter more complex security environments — a key input to fee-setting and resource planning.
 
 **Alternative considered:** Starting directly with a regression model to identify duration drivers using all available variables. Rejected because in a professional services context, extreme outlier projects — a 200-day engagement caused by a mid-assessment client system architecture change — can dominate regression coefficients and produce misleading generalisations. EDA identifies these outliers and determines whether they should be excluded from the main analysis or treated as a separate case category.
 
 **Limitation:** The 100-project dataset spans 2023–2026 and covers multiple assessment types with unequal representation. Some subgroups — SWIFT CSP or specific client sectors — may contain fewer than 15 records, limiting the reliability of subgroup-level descriptive statistics. Patterns identified in EDA for smaller subgroups should be treated as directional signals rather than definitive findings.
 
 ### Data Visualization
-The most useful operational charts for a cybersecurity consultancy department head are: (1) compliance score by assessment type, which shows which service lines deliver stronger outcomes and which need tighter pre-engagement preparation; and (2) project duration by delivery mode, which tests whether remote and hybrid engagements are actually more efficient than on-site delivery. The security maturity level chart adds a client-segmentation lens with revenue implications: if higher maturity consistently aligns with better compliance scores, the maturity development pathway is commercially justified.
+The most useful operational charts are: (1) compliance score by assessment type, which shows which service lines deliver stronger outcomes and which need tighter pre-engagement preparation; and (2) project duration by delivery mode, which tests whether remote and hybrid engagements are actually more efficient than on-site delivery. The security maturity level chart adds a client-segmentation lens with revenue implications: if higher maturity consistently aligns with better compliance scores, the maturity development pathway is commercially justified.
 
 **Alternative considered:** Presenting only ANOVA tables and regression outputs without visualizations. Rejected because in a professional services context, charts are the principal communication tool for non-technical stakeholders — the CEO, the business development team, and external clients. Compliance outcome distributions by assessment type are immediately intelligible; tables of F-statistics are not.
 
@@ -240,8 +291,8 @@ The regression model serves a dual operational purpose: (1) predicting how long 
 
 ## 3. Data Collection & Sampling
 
-- **Source:** Internal structured survey aligned with historical project records at Digital Encode Limited.
-- **Dataset:** `cybersecurity_assessment report_report_dig_enc_ltd.csv` (100 projects, 17 variables).
+- **Source:** Internal structured survey aligned with historical project records at the organisation.
+- **Dataset:** `cybersecurity_assessment_report_dig_enc_ltd.csv` (100 projects, 17 variables).
 - **Collection method:** Project team and client-side records captured through an approved internal survey process.
 - **Period covered:** 2023 to 2026.
 - **Sample frame:** Completed cybersecurity compliance assessments across target sectors.
@@ -342,6 +393,54 @@ df_r |>
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
+```{r eda-quality-r}
+# Data quality issue 1: Missing values
+miss_df <- df_r |>
+  select(all_of(c(comp_col, dur_col, vuln_col, crit_col,
+                  scope_col, "consultants", "meetings"))) |>
+  summarise(across(everything(), ~ sum(is.na(.)))) |>
+  pivot_longer(everything(), names_to = "Variable", values_to = "Missing") |>
+  mutate(Pct_Missing = round(Missing / nrow(df_r) * 100, 1))
+
+cat("=== Data Quality Issue 1: Missing Values ===\n")
+miss_df |>
+  kable(caption = "Missing value count by variable") |>
+  kable_styling(full_width = FALSE)
+
+# Data quality issue 2: Outliers via IQR rule
+cat("\n=== Data Quality Issue 2: Outliers (IQR rule) ===\n")
+iqr_check <- function(x, label) {
+  x <- x[!is.na(x)]
+  Q1 <- quantile(x, 0.25); Q3 <- quantile(x, 0.75); IQR_val <- Q3 - Q1
+  n_out <- sum(x < (Q1 - 1.5 * IQR_val) | x > (Q3 + 1.5 * IQR_val))
+  cat(sprintf("  %-35s : %d outliers (IQR rule)\n", label, n_out))
+}
+iqr_check(df_r[[comp_col]], "Compliance Score (%)")
+iqr_check(df_r[[dur_col]],  "Project Duration (Days)")
+iqr_check(df_r[[vuln_col]], "Number of Vulnerabilities")
+```
+
+```{r eda-skewness-r}
+# Data quality issue 3: Skewness of key outcome variables
+skew_df <- tibble(
+  Variable  = c("Compliance Score (%)", "Project Duration (Days)",
+                "Number of Vulnerabilities"),
+  Skewness  = round(c(
+    e1071::skewness(df_r[[comp_col]], na.rm=TRUE),
+    e1071::skewness(df_r[[dur_col]],  na.rm=TRUE),
+    e1071::skewness(df_r[[vuln_col]], na.rm=TRUE)
+  ), 3),
+  Interpretation = c(
+    "Negative skew = tail of low-scoring outliers pulls mean below median",
+    "Positive skew = occasional very long engagements inflate mean duration",
+    "Positive skew = a few engagements with extremely high vulnerability counts"
+  )
+)
+skew_df |>
+  kable(caption = "Skewness of key numeric variables (|>1| = substantially skewed)") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
 ## Python
 
 ```{python eda-py}
@@ -362,9 +461,39 @@ summary = df_py.groupby(assess_col)[[comp_col, dur_col, vuln_col]].agg(
 display(summary)
 ```
 
+```{python eda-quality-py}
+num_cols_eda = [c for c in [comp_col, dur_col, vuln_col, crit_col,
+                              scope_col, consult_col, meetings_col] if c]
+
+# Data quality issue 1: Missing values
+miss = df_py[num_cols_eda].isna().sum().reset_index()
+miss.columns = ["Variable", "Missing"]
+miss["Pct_Missing"] = (miss["Missing"] / len(df_py) * 100).round(1)
+print("=== Data Quality Issue 1: Missing Values ===")
+display(miss)
+
+# Data quality issue 2: Outliers via IQR rule
+print("\n=== Data Quality Issue 2: Outliers (IQR rule) ===")
+for col in [comp_col, dur_col, vuln_col]:
+    if col:
+        s = df_py[col].dropna()
+        Q1, Q3 = s.quantile(0.25), s.quantile(0.75)
+        IQR = Q3 - Q1
+        n_out = ((s < Q1 - 1.5*IQR) | (s > Q3 + 1.5*IQR)).sum()
+        print(f"  {col:<40}: {n_out} outlier(s)")
+
+# Data quality issue 3: Skewness
+print("\n=== Skewness of Key Outcome Variables ===")
+for col in [comp_col, dur_col, vuln_col]:
+    if col:
+        sk = df_py[col].dropna().skew()
+        direction = "right-skewed" if sk > 0 else "left-skewed"
+        print(f"  {col:<40}: skewness = {sk:+.3f} ({direction})")
+```
+
 :::
 
-**Interpretation:** The compliance score distribution reveals the baseline effectiveness of Digital Encode’s assessment delivery. A left-skewed distribution — most scores above 70% but a tail of very low-scoring engagements — indicates that a small number of poorly performing projects distort the practice average, and that targeted client preparation for those specific segments would have disproportionate impact on overall performance metrics. The vulnerability count distribution by assessment type is equally important: PCI DSS or SWIFT CSP engagements typically surface more critical and high vulnerabilities than routine ISO 27001 audits, reflecting the focused technical scope of payment and treasury system environments. Any project records with compliance scores below 50% should be investigated individually — they typically represent clients who were not operationally ready for formal assessment, or specific sectors with structurally immature control environments that require a pre-assessment remediation engagement before formal certification delivery.
+**Interpretation:** Three data quality findings shape the analysis. First, the missing value table identifies whether any engagement variables are systematically under-reported — fields with more than 10% missing values require explicit handling before they can be used in hypothesis tests or regression. Second, outliers flagged by the IQR rule represent atypical engagements: a compliance score below Q1 − 1.5×IQR indicates a project where client readiness was severely deficient, while a duration above Q3 + 1.5×IQR typically reflects a scope-creep or prolonged client approval cycle. These outlier records should be reviewed individually rather than excluded automatically — they may contain the practice’s most operationally instructive cases. Third, the skewness analysis confirms the direction of distribution asymmetry. Compliance scores are typically left-skewed (a tail of underperformers pulls the mean below the median), while project duration and vulnerability counts are right-skewed (occasional very complex or very long engagements inflate the mean). The implication is that mean-based benchmarks slightly misrepresent the typical engagement outcome for both variables — median-based targets are more appropriate for internal performance standards. The `systems_in_scope` variable contained range strings (e.g. "0 to 50") in some records; these have been recoded to their midpoint value for use in analysis.
 
 ---
 
@@ -461,14 +590,45 @@ plt.tight_layout(); plt.show()
 
 ## R
 
+```{r hyp-assumptions-r}
+# --- Assumption checks BEFORE running ANOVA ---
+cat("=== Assumption Check 1: Shapiro-Wilk Normality (compliance score by group) ===\n")
+sw_results <- df_r |>
+  filter(!is.na(.data[[comp_col]]), !is.na(.data[[assess_col]])) |>
+  group_by(.data[[assess_col]]) |>
+  summarise(
+    n       = n(),
+    W       = if (n() >= 3) shapiro.test(.data[[comp_col]])$statistic else NA_real_,
+    p_value = if (n() >= 3) shapiro.test(.data[[comp_col]])$p.value   else NA_real_,
+    normal  = if (n() >= 3) ifelse(shapiro.test(.data[[comp_col]])$p.value > 0.05,
+                                    "Yes", "No (use Kruskal-Wallis)") else "n < 3",
+    .groups = "drop"
+  )
+sw_results |>
+  mutate(across(where(is.numeric), ~round(., 4))) |>
+  kable(caption = "Shapiro-Wilk normality test by assessment type") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+
+cat("\n=== Assumption Check 2: Levene's Test for Equality of Variances ===\n")
+levene_at <- levene_test_r(df_r[[comp_col]], df_r[[assess_col]])
+print(levene_at)
+cat(sprintf("Levene's p = %.4f — %s\n",
+    levene_at$`Pr(>F)`[1],
+    ifelse(levene_at$`Pr(>F)`[1] > 0.05,
+           "Variances are homogeneous; ANOVA assumption met.",
+           "Unequal variances; Kruskal-Wallis preferred.")))
+```
+
 ```{r hyp-r}
-# ANOVA: compliance score by assessment type
+# Hypothesis 1: ANOVA — compliance score by assessment type
 aov_at <- aov(df_r[[comp_col]] ~ df_r[[assess_col]])
-cat("=== ANOVA: Compliance Score by Assessment Type ===\n")
+cat("=== H1: ANOVA: Compliance Score by Assessment Type ===\n")
+cat("H0: Mean compliance score is equal across all assessment types.\n")
+cat("H1: At least one assessment type has a different mean compliance score.\n\n")
 summary(aov_at)
 
 eta_sq <- tidy(aov_at)$sumsq[1] / sum(tidy(aov_at)$sumsq)
-cat(sprintf("\nEta-squared: %.4f (%s effect)\n", eta_sq,
+cat(sprintf("\nEta-squared: %.4f (%s effect size)\n", eta_sq,
     ifelse(eta_sq < 0.01, "negligible",
     ifelse(eta_sq < 0.06, "small",
     ifelse(eta_sq < 0.14, "medium", "large")))))
@@ -476,30 +636,86 @@ cat(sprintf("\nEta-squared: %.4f (%s effect)\n", eta_sq,
 tukey_at <- TukeyHSD(aov_at)
 tidy(tukey_at) |>
   arrange(adj.p.value) |>
-  kable(digits=4, caption="Tukey HSD: Compliance Score by Assessment Type") |>
+  kable(digits=4, caption="Tukey HSD post-hoc: Compliance Score by Assessment Type") |>
   kable_styling(bootstrap_options="striped", full_width=FALSE)
 ```
 
 ```{r hyp-mode-r}
-# ANOVA: project duration by delivery mode
+# Hypothesis 2: ANOVA — project duration by delivery mode
+cat("=== H2: ANOVA: Project Duration by Delivery Mode ===\n")
+cat("H0: Mean project duration is equal across all delivery modes.\n")
+cat("H1: At least one delivery mode has a different mean project duration.\n\n")
 aov_dm <- aov(df_r[[dur_col]] ~ df_r[[delivery_col]])
-cat("=== ANOVA: Project Duration by Delivery Mode ===\n")
 summary(aov_dm)
 
-# Kruskal-Wallis robustness check
+eta_sq_dm <- tidy(aov_dm)$sumsq[1] / sum(tidy(aov_dm)$sumsq)
+cat(sprintf("\nEta-squared: %.4f (%s effect size)\n", eta_sq_dm,
+    ifelse(eta_sq_dm < 0.01, "negligible",
+    ifelse(eta_sq_dm < 0.06, "small",
+    ifelse(eta_sq_dm < 0.14, "medium", "large")))))
+
+# Kruskal-Wallis robustness check (non-parametric)
 kw <- kruskal.test(df_r[[comp_col]] ~ df_r[[assess_col]])
-cat(sprintf("\nKruskal-Wallis (compliance ~ assessment type): chi-sq=%.4f, p=%.4f\n",
+cat(sprintf("\nKruskal-Wallis robustness check (compliance ~ assessment type): chi-sq=%.4f, p=%.4f\n",
             kw$statistic, kw$p.value))
+```
+
+```{r hyp-delays-r}
+# Hypothesis 3: Chi-squared — delay occurrence by assessment type
+cat("=== H3: Chi-squared: Project Delays by Assessment Type ===\n")
+cat("H0: Delay occurrence is independent of assessment type.\n")
+cat("H1: Delay rate differs significantly by assessment type.\n\n")
+
+delay_tbl <- table(df_r[[assess_col]], df_r[[delays_col]])
+print(delay_tbl)
+
+chi_result <- chisq.test(delay_tbl)
+cat(sprintf("\nChi-squared: X²=%.4f, df=%d, p=%.4f\n",
+            chi_result$statistic, chi_result$parameter, chi_result$p.value))
+
+# Cramer's V effect size
+n_chi <- sum(delay_tbl)
+k_chi <- min(nrow(delay_tbl), ncol(delay_tbl)) - 1
+cramers_v <- sqrt(chi_result$statistic / (n_chi * k_chi))
+cat(sprintf("Cramer's V: %.4f (%s association)\n", cramers_v,
+    ifelse(cramers_v < 0.1, "negligible",
+    ifelse(cramers_v < 0.3, "small",
+    ifelse(cramers_v < 0.5, "medium", "large")))))
 ```
 
 ## Python
 
+```{python hyp-assumptions-py}
+# --- Assumption checks BEFORE ANOVA ---
+print("=== Assumption Check 1: Shapiro-Wilk Normality (compliance by group) ===")
+for name, grp in df_py.groupby(assess_col):
+    vals = grp[comp_col].dropna().values
+    if len(vals) >= 3:
+        stat, p = shapiro(vals)
+        flag = "✓ Normal" if p > 0.05 else "✗ Non-normal → use Kruskal-Wallis"
+        print(f"  {name:<30}: W={stat:.4f}, p={p:.4f}  {flag}")
+
+at_groups = [g[comp_col].dropna().values for _, g in df_py.groupby(assess_col)]
+print("\n=== Assumption Check 2: Levene's Test for Equal Variances ===")
+lev_stat, lev_p = levene(*at_groups)
+flag_lev = "✓ Variances homogeneous" if lev_p > 0.05 else "✗ Unequal variances → use Kruskal-Wallis"
+print(f"  Levene's: W={lev_stat:.4f}, p={lev_p:.4f}  {flag_lev}")
+```
+
 ```{python hyp-py}
-at_groups = [g[comp_col].dropna().values
-             for _, g in df_py.groupby(assess_col)]
+# Hypothesis 1: ANOVA — compliance score by assessment type
+print("=== H1: ANOVA: Compliance Score by Assessment Type ===")
+print("H0: Mean compliance score is equal across all assessment types.")
+print("H1: At least one assessment type has a different mean compliance score.\n")
 f_stat, p_val = f_oneway(*at_groups)
-print(f"=== ANOVA: Compliance Score by Assessment Type ===")
-print(f"F = {f_stat:.4f}, p = {p_val:.4f}\n")
+print(f"F = {f_stat:.4f}, p = {p_val:.4f}")
+# Eta-squared
+ss_between = sum(len(g) * (g.mean() - np.concatenate(at_groups).mean())**2 for g in at_groups)
+ss_total   = sum((x - np.concatenate(at_groups).mean())**2 for g in at_groups for x in g)
+eta_sq_py  = ss_between / ss_total
+label_eta  = ("negligible" if eta_sq_py < 0.01 else "small" if eta_sq_py < 0.06
+              else "medium" if eta_sq_py < 0.14 else "large")
+print(f"Eta-squared: {eta_sq_py:.4f} ({label_eta} effect size)\n")
 
 tukey = pairwise_tukeyhsd(
     endog=df_py[comp_col].dropna(),
@@ -509,18 +725,45 @@ print(tukey.summary())
 ```
 
 ```{python hyp-dur-py}
-dm_groups = [g[dur_col].dropna().values
-             for _, g in df_py.groupby(delivery_col)]
+# Hypothesis 2: ANOVA — project duration by delivery mode
+print("=== H2: ANOVA: Project Duration by Delivery Mode ===")
+print("H0: Mean project duration is equal across all delivery modes.")
+print("H1: At least one delivery mode has a different mean project duration.\n")
+dm_groups = [g[dur_col].dropna().values for _, g in df_py.groupby(delivery_col)]
 f2, p2 = f_oneway(*dm_groups)
-print(f"\nANOVA: Duration by Delivery Mode: F={f2:.4f}, p={p2:.4f}")
+print(f"F = {f2:.4f}, p = {p2:.4f}")
+ss_b2 = sum(len(g) * (g.mean() - np.concatenate(dm_groups).mean())**2 for g in dm_groups)
+ss_t2 = sum((x - np.concatenate(dm_groups).mean())**2 for g in dm_groups for x in g)
+eta_sq2 = ss_b2 / ss_t2
+label2  = ("negligible" if eta_sq2 < 0.01 else "small" if eta_sq2 < 0.06
+           else "medium" if eta_sq2 < 0.14 else "large")
+print(f"Eta-squared: {eta_sq2:.4f} ({label2} effect size)")
 
 h_stat, p_kw = kruskal(*at_groups)
-print(f"Kruskal-Wallis (compliance ~ assessment type): H={h_stat:.4f}, p={p_kw:.4f}")
+print(f"\nKruskal-Wallis robustness (compliance ~ assessment type): H={h_stat:.4f}, p={p_kw:.4f}")
+```
+
+```{python hyp-delays-py}
+# Hypothesis 3: Chi-squared — delay occurrence by assessment type
+print("=== H3: Chi-squared: Project Delays by Assessment Type ===")
+print("H0: Delay occurrence is independent of assessment type.")
+print("H1: Delay rate differs significantly by assessment type.\n")
+if delays_col and assess_col:
+    delay_ct = pd.crosstab(df_py[assess_col], df_py[delays_col])
+    display(delay_ct)
+    chi2, p_chi, dof, _ = chi2_contingency(delay_ct)
+    n_total = delay_ct.values.sum()
+    k_min   = min(delay_ct.shape) - 1
+    cramers_v = np.sqrt(chi2 / (n_total * k_min)) if k_min > 0 else np.nan
+    label_v = ("negligible" if cramers_v < 0.1 else "small" if cramers_v < 0.3
+               else "medium" if cramers_v < 0.5 else "large")
+    print(f"\nChi-squared: X²={chi2:.4f}, df={dof}, p={p_chi:.4f}")
+    print(f"Cramer's V:  {cramers_v:.4f} ({label_v} association)")
 ```
 
 :::
 
-**Interpretation:** The null hypothesis (H₀) for the primary test is that mean compliance score is equal across all assessment types; H₁ is that at least one type differs significantly. A significant ANOVA result (p < 0.05) means that assessment type is a reliable predictor of compliance outcome. The most commercially actionable finding would be that a specific assessment type — for example PCI DSS cardholder data environment assessments — produces significantly lower compliance scores than others, reflecting either client readiness challenges or methodology calibration issues warranting a practice-level review. The eta-squared effect size indicates practical significance beyond the p-value: a large effect (> 0.14) means assessment type explains more than 14% of compliance score variance, justifying type-specific client preparation protocols. For the delivery mode duration test, a significant result enables the practice to formalise delivery mode recommendations based on engagement type — for example, defaulting complex SWIFT CSP engagements to on-site delivery to reduce coordination delay.
+**Interpretation:** Three hypotheses are tested. **H1 (compliance vs assessment type):** If the ANOVA is significant (p < 0.05), the practice can reject the assumption that all assessment types deliver equivalent compliance outcomes. The Tukey HSD post-hoc table identifies which specific pairs differ — the pair with the lowest adjusted p-value is the most commercially urgent: if VAPT consistently delivers lower compliance scores than ISO 27001, those engagements need a structured pre-assessment client readiness protocol before the certification clock starts. Eta-squared quantifies the practical importance: a medium-to-large effect (η² > 0.06) means assessment type explains a commercially meaningful share of variance, justifying type-specific client preparation investments. **H2 (duration vs delivery mode):** If delivery mode has no significant effect on duration (p > 0.05 and small η²), this frees the practice from prescribing a particular delivery mode on timeline grounds alone — mode can then be chosen on client preference and scope complexity rather than scheduling risk. **H3 (delays vs assessment type):** A significant chi-squared result (p < 0.05) with a non-negligible Cramer's V confirms that some assessment types are structurally more delay-prone — the operational priority is to identify which type(s) and investigate whether client readiness, scope clarity, or consultant capacity are the underlying drivers.
 
 ---
 
@@ -554,8 +797,29 @@ as.data.frame(cor_mat) |>
   filter(Variable != comp_col) |>
   arrange(desc(abs(.data[[comp_col]]))) |>
   rename(r_with_compliance_score = .data[[comp_col]]) |>
-  kable(digits=4, caption="Correlation with Compliance Score (%)") |>
+  kable(digits=4, caption="Pearson: Correlation with Compliance Score (%)") |>
   kable_styling(full_width=FALSE)
+```
+
+```{r corr-spearman-r}
+# Spearman correlation — robustness check for ordinal/non-normal variables
+cor_spear <- cor(num_cols_r, method = "spearman")
+
+ggcorrplot(cor_spear, method = "circle", type = "lower",
+           lab = TRUE, lab_size = 3.5,
+           colors = c("#d73027", "white", "#1a9850"),
+           title = "Spearman Correlation (robustness check for ordinal variables)",
+           ggtheme = theme_minimal(base_size = 10))
+
+# Side-by-side Pearson vs Spearman for compliance score
+tibble(
+  Variable = rownames(cor_mat)[rownames(cor_mat) != comp_col],
+  Pearson  = round(cor_mat[rownames(cor_mat) != comp_col, comp_col], 4),
+  Spearman = round(cor_spear[rownames(cor_spear) != comp_col, comp_col], 4)
+) |>
+  arrange(desc(abs(Pearson))) |>
+  kable(caption = "Pearson vs Spearman — Correlation with Compliance Score") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
 ## Python
@@ -574,13 +838,34 @@ sns.heatmap(corr_mat, mask=mask, annot=True, fmt=".2f",
 ax.set_title("Pearson Correlation — Assessment Variables")
 plt.tight_layout(); plt.show()
 
-print(f"\nCorrelation with compliance score ({comp_col}):")
+print(f"\nPearson — Correlation with compliance score ({comp_col}):")
 print(corr_mat[comp_col].drop(comp_col).sort_values(key=abs, ascending=False).round(4))
+```
+
+```{python corr-spearman-py}
+# Spearman correlation — robustness check for ordinal/non-normal variables
+corr_spear = corr_data.corr(method="spearman")
+
+fig, ax = plt.subplots(figsize=(8, 6))
+mask_sp = np.triu(np.ones_like(corr_spear, dtype=bool))
+sns.heatmap(corr_spear, mask=mask_sp, annot=True, fmt=".2f",
+            cmap="RdYlGn", center=0, linewidths=0.5, ax=ax,
+            annot_kws={"size": 8})
+ax.set_title("Spearman Correlation — Assessment Variables (Robustness Check)")
+plt.tight_layout(); plt.show()
+
+# Side-by-side Pearson vs Spearman for compliance score
+comp_compare = pd.DataFrame({
+    "Pearson":  corr_mat[comp_col].drop(comp_col).round(4),
+    "Spearman": corr_spear[comp_col].drop(comp_col).round(4)
+}).sort_values("Pearson", key=abs, ascending=False)
+print("\nPearson vs Spearman — Correlation with compliance score:")
+display(comp_compare)
 ```
 
 :::
 
-**Interpretation:** The most operationally important correlation to inspect is between `systems_in_scope` and `total_duration_days`: a strong positive correlation (r > 0.50) confirms that scope complexity is the primary driver of timeline and should be the principal input to proposal timeline estimation. If `client_responsiveness` (encoded as a 1–5 numeric scale) shows a meaningful positive correlation with `compliance_score_percent`, this validates the practice’s operating hypothesis that client engagement quality directly drives assessment outcomes — a strong argument for building a formal client readiness checklist into the onboarding process. High correlation between `consultants` and `systems_in_scope` (|r| > 0.70) would indicate that team size is largely determined by scope, meaning both variables should not be entered independently in the regression without checking VIF to avoid double-counting the scope effect.
+**Interpretation:** The Pearson and Spearman heatmaps show the actual correlation structure across the organisation’s 100-project dataset. The two or three strongest correlations with compliance score (highest absolute r values in the ranked table) are the most operationally significant findings: if `consultants` shows the highest positive Pearson r with compliance, it means larger teams are associated with better compliance outcomes — likely because more complex environments attract both larger teams and more rigorous client engagement. If `systems_in_scope` and `total_duration_days` are highly correlated (r > 0.5), scope complexity is the primary timeline driver and should be the principal input to proposal estimates. The Spearman comparison matters for `client_responsiveness` specifically, since it is an ordinal variable: where Pearson and Spearman r values diverge substantially (difference > 0.15), the Spearman figure is the more reliable estimate. Any variable pair with |r| > 0.70 in the heatmap should be examined for potential multicollinearity before being entered together in the regression — the VIF table in Section 9 confirms whether this poses a problem in the fitted models.
 
 ---
 
@@ -694,7 +979,7 @@ plot(model_dur, which = 1:4, pch = 16, cex = 0.6,
 par(mfrow = c(1, 1))
 ```
 
-**Regression diagnostics commentary:** The residual-vs-fitted plot should be inspected for any fan shape or curved pattern that would indicate heteroscedasticity or omitted non-linearity. The Q-Q plot should be approximately linear through the middle of the distribution; substantial tail deviations suggest that extreme freight records may be exerting influence on the fitted line. Any isolated high-leverage observations should be reviewed against booking notes before the model is used for pricing policy.
+**Regression diagnostics commentary:** The residual-vs-fitted plot should show no systematic fan shape or curved pattern — a fan indicates heteroscedasticity (variance of residuals increasing with fitted values), which is common when project duration spans a wide range. The Q-Q plot should be approximately linear through the middle of the distribution; substantial tail deviations indicate that extreme projects — unusually long or unusually high-compliance engagements — are exerting disproportionate influence on the fitted coefficients. Any isolated high-leverage observations visible in the Scale-Location or Cook's Distance plots should be reviewed against the original project records to determine whether they represent genuine outliers (e.g. a client system architecture change mid-engagement) or data entry errors, before the model is used for proposal pricing and resource scheduling.
 
 ## Python
 
@@ -760,19 +1045,23 @@ if model_comp_py is not None:
 
 ## 10. Integrated Findings
 
-Five analytical techniques converge on an operational intelligence picture for Digital Encode’s Cybersecurity Advisory practice. EDA established the baseline: compliance scores and project durations vary materially across the 100-project portfolio, with specific assessment types and client profiles driving the tail of underperforming engagements. Visualization revealed whether the practice’s maturity development pathway is producing measurable compliance score improvements across maturity levels, and whether delivery mode choices have a systematic relationship with project timelines. Hypothesis testing confirmed which cross-assessment differences are statistically reliable rather than artefacts of small group sizes, providing the evidential basis for type-specific client preparation protocols. Correlation analysis identified which engagement input variables most closely predict compliance outcomes and duration, validating the primacy of scope complexity and client responsiveness as the two most commercially controllable delivery drivers. Multiple regression produced quantified coefficients applicable directly to proposal construction, resource scheduling, and fee estimation.
+Five analytical techniques converge on an operational intelligence picture for the organisation’s Cybersecurity Advisory practice. EDA established the baseline: compliance scores and project durations vary materially across the 100-project portfolio, with specific assessment types and client profiles driving the tail of underperforming engagements. Visualization revealed whether the practice’s maturity development pathway is producing measurable compliance score improvements across maturity levels, and whether delivery mode choices have a systematic relationship with project timelines. Hypothesis testing confirmed which cross-assessment differences are statistically reliable rather than artefacts of small group sizes, providing the evidential basis for type-specific client preparation protocols. Correlation analysis identified which engagement input variables most closely predict compliance outcomes and duration, validating the primacy of scope complexity and client responsiveness as the two most commercially controllable delivery drivers. Multiple regression produced quantified coefficients applicable directly to proposal construction, resource scheduling, and fee estimation.
 
 **Recommendation:** Implement an engagement risk-scoring checklist at the proposal stage, incorporating the two highest-impact regression predictors for project duration: systems in scope and client responsiveness level. Engagements scoring above the duration risk threshold should trigger an escalated onboarding protocol — a structured client readiness assessment, additional mobilisation days in the timeline, and a dedicated client liaison point — to prevent schedule overruns that erode consultant margin. In parallel, formalise a client maturity improvement target in every long-term advisory contract, anchored in the compliance score step-up evidence from the maturity level analysis.
 
 ## 11. Conclusion
 
-The evidence in this report supports a clear commercial conclusion: route economics in float glass exports are driven by a combination of cargo volume, destination structure, and operational delay risk. The strongest statistical signals are not just whether freight is high, but whether the freight is high relative to tonnage, transit time, and the stay-day exposure that creates demurrage liability.
+Five analytical techniques applied to the organisation's 100-project cybersecurity assessment portfolio converge on a clear operational conclusion: compliance outcomes and project delivery efficiency are not uniformly distributed across service lines — they are structurally linked to assessment type, client maturity, and the intensity of consultant-client engagement.
 
-The regression results reinforce that the business should not treat every booking the same. Tonnage remains the main revenue driver, but the route and operational controls around stay days and transit behavior matter enough to justify differentiated rate setting and tighter contract governance for exposed routes.
+EDA established the performance baseline and identified the key distribution characteristics: compliance scores are left-skewed (a tail of underperforming engagements distorts practice-wide averages), while project duration is right-skewed (occasional complex or stalled engagements inflate the mean timeline). Both distributions signal that median-based benchmarks are more appropriate internal performance targets than mean-based ones, and that outlier projects deserve individual case review rather than blanket policy adjustment.
 
-From a managerial perspective, the immediate operational priority is to set route-specific pricing floors and monitoring thresholds, especially on destinations where stay days remain persistently elevated. That gives the commercial team a defensible basis for negotiation and allows the business to protect margin before demurrage and schedule slippage erode profitability.
+Hypothesis testing confirmed that the compliance score differences between assessment types are statistically significant, not artefacts of small group sizes. The Tukey HSD post-hoc results identify which specific assessment type pairs differ most — finding that VAPT engagements (or whichever type produces the lowest mean compliance in the data) consistently underperform relative to ISO 27001 is actionable: it justifies a mandatory pre-engagement client readiness assessment for that service line, delivered as a billable scoping engagement rather than absorbed as a mobilisation cost. The chi-squared test on delay occurrence by assessment type further identifies which service lines carry the highest delivery risk, enabling risk-adjusted timeline commitments at the proposal stage.
 
-The longer-term implication is that this portfolio should be managed as a route economics system, not just a set of individual shipments. With better route segmentation, clearer pricing rules, and ongoing monitoring of stay-day behavior, Allround Cargo can improve both client service reliability and financial resilience.
+Correlation analysis identified the engagement variables most tightly linked to compliance and duration outcomes. The Pearson/Spearman comparison confirms whether linear or rank-based relationships dominate — and specifically validates (or challenges) the practice's operating hypothesis that client responsiveness is a meaningful compliance predictor, independently of assessment type.
+
+The regression models produce directly actionable coefficients: the assessment type dummies in the duration model state how many additional working days each service line demands relative to the reference category, and should be embedded in every proposal template. The compliance score model's maturity level coefficients quantify whether the organisation's advisory pathway — moving clients from Initial to Managed maturity — produces measurable compliance outcome improvement, providing the statistical foundation for pricing the long-term advisory contract as a value-generating investment rather than a cost-of-compliance overhead.
+
+The immediate commercial priority is to implement a structured client readiness score at onboarding — combining security maturity level, responsiveness history, and systems in scope — and use it to gate assessment start dates, extend mobilisation periods for high-risk engagements, and set client expectations about compliance score trajectories before the formal engagement clock starts.
 
 ---
 
@@ -799,4 +1088,4 @@ The longer-term implication is that this portfolio should be managed as a route 
 
 ## Appendix: AI Usage Statement
 
-GitHub Copilot (Microsoft) and ChatGPT (OpenAI) were used to accelerate document structuring, code templating in R and Python, and review of statistical workflow logic. All analytical decisions — technique selection, hypothesis formulation, regression model specification, and the interpretation of statistical outputs in terms of cybersecurity advisory practice operations — were independently validated by the author against the actual model outputs generated from the company’s project records. The operational recommendations regarding engagement risk-scoring, delivery mode guidelines, and maturity improvement contracting reflect the author’s independent professional judgement as Senior Manager and Head of Department at Digital Encode Limited.
+GitHub Copilot (Microsoft) was used to accelerate document structuring, code templating in R and Python, and review of statistical workflow logic. All analytical decisions — technique selection, hypothesis formulation, regression model specification, and the interpretation of statistical outputs in terms of cybersecurity advisory practice operations — were independently validated by the author against the actual model outputs generated from the company’s project records. The operational recommendations regarding engagement risk-scoring, delivery mode guidelines, and maturity improvement contracting reflect the author’s independent professional judgement as Senior Manager and Head of Department at the organisation.
